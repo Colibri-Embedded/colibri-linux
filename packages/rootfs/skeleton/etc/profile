@@ -1,0 +1,6 @@
+# /etc/profile
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+LD_LIBRARY_PATH=/lib:/usr/lib
+PS1="[\u@\h \W]"
+export PATH LD_LIBRARY_PATH PS1
+

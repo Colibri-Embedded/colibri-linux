@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Colibri Web Kit
+# Author: Daniel Kesler <kesler.daniel@gmail.com>
+
+export WEBUI_ITEM_COUNT=0
+
+init_webui()
+{
+	mkfifo $WEBUI_FIFO &> /dev/null
+	mkfifo $WEBUI_BFIFO &> /dev/null
+	echo -n "" > $WEBUI_DB
+	
+	/sbin/httpd -c /etc/httpd.conf
+	pidof httpd > "$WEBUI_HTTPD_PID"
+}
+
+cleanup_webui()
+{
+	kill -9 $(cat $WEBUI_HTTPD_PID)
+	rm -f $WEBUI_FIFO &> /dev/null
+	rm -f $WEBUI_BFIFO &> /dev/null
+	rm -f $WEBUI_DB
+}
+
+webui_print()
+{
+	IID="$2"
+	PREFIX="$1"
+	shift
+	shift
+	if [ "$IID" != "-" ]; then
+		old_item=$(cat $WEBUI_DB | grep "$IID@" )
+		new_item="$IID@$PREFIX::$@"
+		sed -i $WEBUI_DB -e "s/$old_item/$new_item/"
+		#echo "iid: $IID"
+		#echo "$old_item"
+		#echo "$new_item"
+	else
+		IID=$(awk 'END{print FNR}' $WEBUI_DB)
+		if [ "$IID" != "0" ]; then
+			let "IID--"
+		fi
+		echo "$IID@$PREFIX::$@" >> $WEBUI_DB
+	fi
+	echo $IID
+}
+
+webui_print_info()
+{
+	old_id=$1
+	shift
+	webui_print "info" $old_id $@
+}
+
+# @param $1 message
+# @param $2 item to overwrite
+webui_print_success()
+{
+	old_id=$1
+	shift
+	webui_print "success" $old_id $@
+}
+
+webui_print_simple()
+{
+	old_id=$1
+	shift
+	webui_print "-" $old_id $@
+}
+
+webui_print_warning()
+{
+	old_id=$1
+	shift
+	webui_print "warning" $old_id $@
+}
+
+webui_print_error()
+{
+	old_id=$1
+	shift
+	webui_print "error" $old_id $@
+}
+
+webui_print_working()
+{
+	old_id=$1
+	shift
+	webui_print "working" $old_id $@
+}
+
+webui_print_question()
+{
+	old_id=$1
+	shift
+	webui_print "question" $old_id $@
+}
+
+webui_waitfor_response()
+{
+	id=$(webui_print "choice" - $@)
+	decision="wrong"
+	while read decision; do 
+		echo "${decision}"; 
+		update=$(echo "$@" | sed "s/:$decision/:u/" | sed -r "s/:[0-9]+/:x/g" )
+		xx=$(webui_print "decision" $id $update)
+		# Unlock webui.cgi
+		echo "unlock" > $WEBUI_BFIFO
+	done < $WEBUI_FIFO
+}

@@ -1,0 +1,8 @@
+0@info:: Earlyboot up and running.
+1@-------------------------------------------
+2@#working:: Shrinking FAT partition.
+3@error:: fsck: 'bundles' partition is corrupted.
+4@question:: Choose further action:
+5@decision:: Try to recover partition:0|Reset to factory settings:1
+6@question:: This will erase all your data, are you sure:
+7@choice:: NO:0|YES:1
