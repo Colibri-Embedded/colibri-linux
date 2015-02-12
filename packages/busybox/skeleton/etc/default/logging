@@ -1,0 +1,2 @@
+SYSLOGD_PIDFILE=/run/syslogd.pid
+KLOGD_PIDFILE=/run/klogd.pid

@@ -1,0 +1,16 @@
+# /etc/fstab: static file system information.
+#
+# <file system> <mount point>   <type>  <options>               <dump>  <pass>
+
+#/dev/mmcblk0p1  /boot           vfat    defaults        1   2
+/dev/sda        /               ext2    defaults         0   1
+
+sysfs           /sys            sysfs   defaults         0   0
+proc            /proc           proc    defaults         0   0
+
+tmpfs		/run		tmpfs   defaults	 0   0
+tmpfs		/tmp		tmpfs	defaults	 0   0
+
+#devpts          /dev/pts        devpts  gid=4,mode=620  0   0
+#shm             /dev/shm        tmpfs   defaults        0   0
+
