@@ -24,6 +24,8 @@ do_build()
 	# Disable installation of static libraries
 	sed -i 's# libcrypto.a##;s# libssl.a##' Makefile
 	
+	make depend
+	
 	make ${X_MAKE_ARGS}
 	make INSTALL_PREFIX=${TARGET_DIR} install
 }
