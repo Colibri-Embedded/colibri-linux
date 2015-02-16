@@ -117,7 +117,7 @@ unpack_package()
 {
     if [ "x${P_TAR}" != "x" ]; then
         msg_info "Looking for ${P_TAR}"
-        [ ! -f "$X_DOWNLOADS/$P_TAR" ] && do_download
+        [ ! -f "$X_DOWNLOADS/$P_TAR" ] && do_buitin_download
         msg_info "Unpacking ${P_TAR} ."
         if [ "x$P_RAMFS_BUILD" != "x" ]; then
 			cd ${TMPFS_DIR}
@@ -125,6 +125,8 @@ unpack_package()
         tar xf "$X_DOWNLOADS/$P_TAR"
         cd $P_SRC
     fi
+    
+    do_user_function do_unpack
 }
 
 apply_patches()
@@ -135,6 +137,8 @@ apply_patches()
             patch -Np1 -i $p
         done
     fi
+    
+    do_user_function do_apply_patches
 }
 
 copy_files_from_to()
@@ -197,7 +201,7 @@ exec_with_retry()
     exit 1
 }
 
-do_clean()
+do_buitin_clean()
 {
     msg_info "Cleaning $P_SRC"
 	rm -rf _install
@@ -205,16 +209,46 @@ do_clean()
 	rm -rf $P_SRC
 	rm -f build.log
 	rm -f .permissins_fixed
+	
+	do_user_function do_clean
 }
 
-do_download()
+## @fn download_source()
+## @param $1 URL
+## @param $2 URL_OUTPUT
+## @param $3 DOWNLOAD_DIR
+##
+download_source()
+{
+    dl_url=$1
+    if [ "x$2" != "x-" ]; then
+		dl_output=$2
+    fi
+    if [ "x$3" != "x" ]; then
+		dl_download_dir=$3
+	else
+		dl_download_dir=$X_DOWNLOADS
+	fi
+    
+    if [ "x$dl_output" != "x" ]; then
+		wget --no-check-certificate "$dl_url" -O "$dl_download_dir/$dl_output"
+    else
+		wget --no-check-certificate "$dl_url" -P "$dl_download_dir/"
+	fi	
+}
+
+do_buitin_download()
 {
     msg_info "Downloading ${P_TAR}"
     if [ "x$P_URL_OUTPUT" != "x" ]; then
-		wget --no-check-certificate "$P_URL" -O "$X_DOWNLOADS/$P_URL_OUTPUT"
+		#wget --no-check-certificate "$P_URL" -O "$X_DOWNLOADS/$P_URL_OUTPUT"
+		download_source $P_URL $P_URL_OUTPUT $X_DOWNLOADS
     else
-		wget --no-check-certificate "$P_URL/$P_TAR" -P "$X_DOWNLOADS/"
+		#wget --no-check-certificate "$P_URL/$P_TAR" -P "$X_DOWNLOADS/"
+		download_source $P_URL/$P_TAR - $X_DOWNLOADS
 	fi
+	
+	do_user_function do_download
 }
 
 do_prepare_tmpfs()
@@ -223,7 +257,7 @@ do_prepare_tmpfs()
 	mount -t tmpfs -o size=$P_RAMFS_BUILD,mode=1777 tmpfs $TMPFS_DIR
 }
 
-do_clean_tmpfs()
+do_buitin_clean_tmpfs()
 {
 	#sleep 3
 	#umount $TMPFS_DIR
@@ -231,9 +265,19 @@ do_clean_tmpfs()
 	return
 }
 
+do_user_function()
+{
+	fn=$1
+	T=$(type -t $fn)
+	if [ "x$T" == "xfunction" ]; then
+		shift
+		$fn $@
+	fi
+}
+
 do_pre_build()
 {
-	do_cleanup_env
+	do_buitin_cleanup_env
 	
 	DDIR=$PWD
 	TARGET_DIR="$DDIR/_install"
@@ -248,20 +292,22 @@ do_pre_build()
 	unpack_package
 	apply_patches
 		
-    do_build $@
+    #do_build $@
+    do_user_function "do_build" $@
     
     copy_skeleton
     
-    do_post_install
+    #do_post_install
+    do_user_function "do_post_install"
     
     copy_bundle
     
 	if [ "x$P_RAMFS_BUILD" != "x" ]; then
-		do_clean_tmpfs
+		do_buitin_clean_tmpfs
 	fi
 }
 
-do_cleanup_env()
+do_buitin_cleanup_env()
 {
 	unset C_INCLUDE_PATH CPLUS_INCLUDE_PATH LIBRARY_PATH
 }
@@ -340,10 +386,10 @@ do_commands()
 	
 	case $CMD in
 		clean)
-			do_clean
+			do_buitin_clean
 			;;
 		download)
-			do_download
+			do_buitin_download
 			;;
 		permissions.sh)
 			do_gen_permissions

@@ -1,17 +1,10 @@
-P_VERSION=v$(date +%Y%m%d)
-P_ORDER="021"
-P_SRC="extra_libs"
+P_VERSION=$(date +%Y%m%d)
+P_ORDER="023"
+P_SRC="perl"
 P_OUTPUT="${P_ORDER}-${P_SRC}-${P_VERSION}.cb"
 P_COMPRESSION="xz"
 P_DEPENDENCIES="\
-openssl \
-pcre \
-libxml2 \
-gettext \
-icu \
-libusb \
-libusb-compat \
-libffi \
+perl5 \
 "
 
 source ../../scripts/env.sh ../../scripts

@@ -1,0 +1,211 @@
+P_VERSION=2.4.9
+P_SRC="opencv-${P_VERSION}"
+P_TAR="opencv-${P_VERSION}.tar.gz"
+P_URL="https://github.com/Itseez/opencv/archive/${P_VERSION}.tar.gz"
+P_URL_OUTPUT="$P_TAR"
+P_DEPENDENCIES="python27 python-numpy"
+
+source ../../scripts/env.sh ../../scripts
+
+do_build()
+{	
+	
+	X_HOST_PYTHON27_PATH="${DDIR}/../python27/_host"
+	X_HOST_PYTHON27="${X_HOST_PYTHON27_PATH}/../_host/usr/bin/python2.7"
+	X_PYTHON27_PATH="${DDIR}/../python27/_install"
+	X_NUMPY_PATH="${DDIR}/../python-numpy/_install"
+	
+	export PYTHONPATH=${X_HOST_PYTHON27_PATH}/usr/lib/python2.7:${X_HOST_PYTHON27_PATH}/usr/lib/python2.7/site-packages:${X_HOST_PYTHON27_PATH}/usr/lib64/python2.7/lib-dynload
+	
+	rm -rf build-target
+	mkdir build-target
+	cd build-target
+		
+	cmake ../ \
+		-DCMAKE_TOOLCHAIN_FILE="${DDIR}/../../scripts/toolchainfile.cmake" \
+		-DCMAKE_CROSSCOMPILING=ON \
+		-DPYTHON_LIBRARIES="${X_PYTHON27_PATH}/usr/lib" \
+		-DPYTHONLIBS_VERSION_STRING="2.7.8" \
+		-DPYTHON_EXECUTABLE="${X_HOST_PYTHON27}" \
+		-DPYTHON_INCLUDE_DIR="${X_PYTHON27_PATH}/usr/include/python2.7" \
+		-DPYTHON_INCLUDE_DIRS="-I${X_PYTHON27_PATH}/usr/include" \
+		-DPYTHON_LIBRARY="${X_PYTHON27_PATH}/usr/lib/libpython2.7.so" \
+		-DPYTHON_NUMPY_INCLUDE_DIR="${X_NUMPY_PATH}/usr/lib/python2.7/site-packages/numpy/core/include" \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX="/usr" \
+		-DBUILD_TESTING=OFF \
+		-DBUILD_SHARED_LIBS=ON \
+		-DBUILD_WITH_DEBUG_INFO=OFF \
+		-DBUILD_DOCS=OFF \
+		-DBUILD_EXAMPLES=OFF \
+		-DBUILD_PERF_TESTS=OFF \
+		-DBUILD_TESTS=OFF \
+		-DBUILD_WITH_STATIC_CRT=OFF \
+		-DENABLE_FAST_MATH=ON \
+		-DENABLE_NOISY_WARNINGS=OFF \
+		-DENABLE_OMIT_FRAME_POINTER=ON \
+		-DENABLE_PRECOMPILED_HEADERS=OFF \
+		-DENABLE_PROFILING=OFF \
+		-DOPENCV_CAN_BREAK_BINARY_COMPATIBILITY=ON \
+		-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
+		-DCMAKE_SKIP_RPATH=OFF \
+		-DCMAKE_USE_RELATIVE_PATHS=OFF \
+		-DBUILD_PACKAGE=OFF \
+		-DENABLE_SOLUTION_FOLDERS=OFF \
+		-DINSTALL_CREATE_DISTRIB=OFF \
+		-DBUILD_opencv_androidcamera=OFF \
+		-DBUILD_opencv_apps=OFF \
+		-DBUILD_opencv_calib3d=ON \
+		-DBUILD_opencv_contrib=ON \
+		-DBUILD_opencv_core=ON \
+		-DBUILD_opencv_dynamicuda=OFF \
+		-DBUILD_opencv_features2d=ON \
+		-DBUILD_opencv_flann=ON \
+		-DBUILD_opencv_gpu=OFF \
+		-DBUILD_opencv_highgui=OFF \
+		-DBUILD_opencv_imgproc=ON \
+		-DBUILD_opencv_java=OFF \
+		-DBUILD_opencv_legacy=ON \
+		-DBUILD_opencv_ml=ON \
+		-DBUILD_opencv_nonfree=OFF \
+		-DBUILD_opencv_objdetect=ON \
+		-DBUILD_opencv_ocl=OFF \
+		-DBUILD_opencv_photo=ON \
+		-DBUILD_opencv_python=ON \
+		-DBUILD_opencv_stitching=ON \
+		-DBUILD_opencv_superres=ON \
+		-DBUILD_opencv_ts=OFF \
+		-DBUILD_opencv_video=ON \
+		-DBUILD_opencv_videostab=ON \
+		-DBUILD_opencv_world=OFF \
+		-DENABLE_POWERPC=OFF \
+		-DENABLE_SSE=OFF \
+		-DENABLE_SSE2=OFF \
+		-DENABLE_SSE3=OFF \
+		-DENABLE_SSE41=OFF \
+		-DENABLE_SSE42=OFF \
+		-DENABLE_SSSE3=OFF \
+		-DWITH_CUBLAS=OFF \
+		-DWITH_CUDA=OFF \
+		-DWITH_CUFFT=OFF \
+		-DWITH_NVCUVID=OFF \
+		-DWITH_OPENCLAMDFFT=OFF \
+		-DWITH_OPENCLAMDBLAS=OFF \
+		-DWITH_INTELPERC=OFF \
+		-DWITH_IPP=OFF \
+		-DWITH_TBB=OFF \
+		-DWITH_PVAPI=OFF \
+		-DWITH_XIMEA=OFF \
+		-DWITH_ANDROID_CAMERA=OFF \
+		-DBUILD_ANDROID_CAMERA_WRAPPER=OFF \
+		-DBUILD_ANDROID_EXAMPLES=OFF \
+		-DINSTALL_ANDROID_EXAMPLES=OFF \
+		-DBUILD_FAT_JAVA_LIB=OFF \
+		-DBUILD_JAVA_SUPPORT=OFF \
+		-DWITH_AVFOUNDATION=OFF	\
+		-DWITH_CARBON=OFF \
+		-DWITH_QUICKTIME=OFF \
+		-DWITH_VFW=OFF \
+		-DWITH_WIN32UI=OFF \
+		-DWITH_CSTRIPES=OFF \
+		-DWITH_DSHOW=OFF \
+		-DWITH_MSMF=OFF \
+		-DWITH_VIDEOINPUT=ON \
+		-DBUILD_JASPER=OFF \
+		-DBUILD_JPEG=OFF \
+		-DBUILD_OPENEXR=OFF \
+		-DBUILD_PNG=OFF \
+		-DBUILD_TIFF=OFF \
+		-DBUILD_ZLIB=OFF \
+		-DBUILD_NEW_PYTHON_SUPPORT=ON \
+		-DINSTALL_C_EXAMPLES=OFF \
+		-DINSTALL_PYTHON_EXAMPLES=OFF \
+		-DINSTALL_TO_MANGLED_PATHS=OFF \
+		-DWITH_1394=OFF \
+		-DWITH_EIGEN=OFF \
+		-DWITH_IMAGEIO=OFF \
+		-DWITH_OPENCL=OFF \
+		-DWITH_OPENEXR=OFF \
+		-DWITH_OPENGL=OFF \
+		-DWITH_OPENMP=OFF \
+		-DWITH_OPENNI=OFF \
+		-DWITH_UNICAP=OFF \
+		-DWITH_XINE=OFF \
+		-DWITH_GTK=OFF \
+		-DWITH_GSTREAMER=OFF \
+		-DWITH_QT=OFF
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_FFMPEG),y)
+		#~ OPENCV_CONF_OPT += -DWITH_FFMPEG=ON
+		#~ OPENCV_DEPENDENCIES += ffmpeg bzip2
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_FFMPEG=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_GSTREAMER),y)
+		#~ OPENCV_CONF_OPT += -DWITH_GSTREAMER=ON
+		#~ OPENCV_DEPENDENCIES += gstreamer gst-plugins-base
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_GSTREAMER=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_GTK),y)
+		#~ OPENCV_CONF_OPT += -DWITH_GTK=ON
+		#~ OPENCV_DEPENDENCIES += libgtk2
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_GTK=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_JASPER),y)
+		#~ OPENCV_CONF_OPT += -DWITH_JASPER=ON
+		#~ OPENCV_DEPENDENCIES += jasper
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_JASPER=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_JPEG),y)
+		#~ OPENCV_CONF_OPT += -DWITH_JPEG=ON
+		#~ OPENCV_DEPENDENCIES += jpeg
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_JPEG=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_PNG),y)
+		#~ OPENCV_CONF_OPT += -DWITH_PNG=ON
+		#~ OPENCV_DEPENDENCIES += libpng
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_PNG=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_QT),y)
+		#~ OPENCV_CONF_OPT += -DWITH_QT=4
+		#~ OPENCV_DEPENDENCIES += qt
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_QT=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_TIFF),y)
+		#~ OPENCV_CONF_OPT += -DWITH_TIFF=ON
+		#~ OPENCV_DEPENDENCIES += tiff
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_TIFF=OFF
+		#~ endif
+#~ 
+		#~ ifeq ($(BR2_PACKAGE_OPENCV_WITH_V4L),y)
+		#~ OPENCV_CONF_OPT += -DWITH_V4L=ON -DWITH_LIBV4L=ON
+		#~ OPENCV_DEPENDENCIES += libv4l
+		#~ else
+		#~ OPENCV_CONF_OPT += -DWITH_V4L=OFF -DWITH_LIBV4L=OFF
+		#~ endif
+		#~ 
+	X_MAKE_ARGS="-j3"
+		
+	make ${X_MAKE_ARGS}
+	make DESTDIR=${TARGET_DIR} install
+}
+
+do_post_install()
+{
+	return
+}
+
+do_commands $@
