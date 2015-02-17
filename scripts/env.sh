@@ -10,6 +10,8 @@ X_STRIP=$X_HOST-strip
 X_RANLIB=$X_HOST-ranlib
 X_DOWNLOADS=${EMB_LINUX_ROOT}/downloads
 X_PACKAGES=${EMB_LINUX_ROOT}/packages
+X_SDCARD=${EMB_LINUX_ROOT}/sdcard
+X_BUNDLES=${X_SDCARD}/bundles
 X_MAKE_ARGS="-j4"
 
 X_BUNDLE="bundle"

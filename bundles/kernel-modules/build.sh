@@ -1,17 +1,10 @@
 P_VERSION=v$(date +%Y%m%d)
-P_ORDER="001"
-P_SRC="core"
+P_ORDER="002"
+P_SRC="kernel-modules"
 P_OUTPUT="${P_ORDER}-${P_SRC}-${P_VERSION}.cb"
 P_COMPRESSION="xz"
 P_DEPENDENCIES="\
-rootfs \
-libc \
-busybox \
-ncurses \
-readline \
-zlib \
-sudo \
-nano \
+linux-kernel-rpi \
 "
 
 source ../../scripts/env.sh ../../scripts

@@ -18,14 +18,15 @@ source ../../scripts/env.sh ../../scripts
 
 do_build()
 {
-	mkdir -p ${TARGET_DIR}
+	mkdir -vp ${TARGET_DIR}
+	mkdir -vp ${X_BUNDLES}
 	copy_to_from_others ${TARGET_DIR} ${P_DEPENDENCIES}
 }
 
 do_post_install()
 {
-	rm -f ${P_OUTPUT}
-	mksquashfs ${TARGET_DIR} ${P_OUTPUT} -comp ${P_COMPRESSION} -b 512K
+	rm -f ${X_BUNDLES}/${P_OUTPUT}
+	mksquashfs ${TARGET_DIR} ${X_BUNDLES}/${P_OUTPUT} -comp ${P_COMPRESSION} -b 512K -no-xattrs -noappend
 	rm -rf ${TARGET_DIR}
 }
 
