@@ -2,7 +2,7 @@
 
 ./bootstrap.sh
 
-#source setup.env
+source setup.env
 
 cd bundles
 for b in $(ls); do

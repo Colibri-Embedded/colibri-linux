@@ -1,0 +1,2 @@
+dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 panic=1 load_ramdisk=1 prompt_ramdisk=0 colibri.firstboot=1 colibri.debug_console=0
+
