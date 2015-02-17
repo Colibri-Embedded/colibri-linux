@@ -1,0 +1,492 @@
+#!/bin/bash
+
+# Functions library :: for Colibri Kit scripts
+# Author: Daniel Kesler <kesler.daniel@gmail.com>
+
+. /lib/colibriwebui
+
+# get value of commandline parameter $1
+# @param $1 parameter to search for
+#
+cmdline_value()
+{
+   cat /proc/cmdline | egrep -o "(^|[[:space:]])$1=[^[:space:]]+" | tr -d " " | cut -d "=" -f 2- | tail -n 1
+}
+
+# Move entire initramfs tree to tmpfs mount.
+# It's a bit tricky but is necessray to enable pivot_root
+# even for initramfs boot image
+#
+transfer_initramfs()
+{
+   if [ ! -r /lib/initramfs_escaped ]; then
+      echo "switch root from initramfs to ramfs"
+      SWITCH=/m # one letter directory
+      mkdir -p $SWITCH
+      mount -t tmpfs -o size="100%" tmpfs $SWITCH
+      cp -a /??* $SWITCH 2>/dev/null # only copy two-and-more-letter directories
+      cd $SWITCH
+      echo "This file indicates that we successfully escaped initramfs" > $SWITCH/lib/initramfs_escaped
+      exec switch_root -c /dev/console . $0
+   fi
+}
+
+# Setup empty union
+# $1 = changes directory (ramfs or persistent changes)
+# $2 = union directory where to mount the union
+#
+init_union()
+{
+   #debug_log "init_union" "$*"
+
+   echo_green_star
+   echo "Setting up union using AUFS 3"
+   mkdir -p "$1"
+   mkdir -p "$2"
+   mount -t aufs -o xino="/.xino",br="$1" aufs "$2"
+}
+
+# Mount squashfs filesystem bundles
+# and add them to union
+# $1 = directory where to search for bundles
+# $2 = directory where to mount bundles
+# $3 = directory where union is mounted
+#
+union_append_bundles()
+{
+   #debug_log "union_append_bundles" "$*"
+   echo_green_star
+   echo "Adding bundles to union"
+   ls -1 "$1" | grep '.'$BEXT'$' | sort | while read BUNDLE; do
+      echo "* $BUNDLE"
+      mkdir -p "$2/$BUNDLE"
+      mount -o loop -t squashfs "$1/$BUNDLE" "$2/$BUNDLE"
+      mount -o remount,add:1:"$2/$BUNDLE" aufs "$3"
+   done
+}
+
+# Create empty fstab properly
+# $1 = root directory
+#
+fstab_create()
+{
+	local FSTAB
+	FSTAB="$1/etc/fstab"
+	echo "# Automaticaly generated fstab by Colibri early-boot" > $FSTAB
+	echo aufs / aufs defaults 0 0 >> $FSTAB
+	echo proc /proc proc defaults 0 0 >> $FSTAB
+	echo sysfs /sys sysfs defaults 0 0 >> $FSTAB
+	echo tmpfs /run	tmpfs defaults 0 0  >> $FSTAB
+	echo tmpfs /tmp	tmpfs defaults 0 0  >> $FSTAB
+   #echo devpts /dev/pts devpts gid=5,mode=620 0 0 >> $FSTAB
+   #echo tmpfs /dev/shm tmpfs defaults 0 0 >> $FSTAB
+}
+
+# Change root and execute init
+# $1 = where to change root
+#
+change_root()
+{
+   #debug_log "change_root" "$*"
+
+   umount /proc
+   umount /sys
+   rm -Rf /lib/modules # this will no longer be needed at all
+
+   cd "$1"
+
+   # make sure important device files and directories are in union
+   mkdir -p boot dev proc sys tmp mnt run
+   if [ ! -e dev/console ]; then mknod dev/console c 5 1; fi
+   if [ ! -e dev/null ]; then mknod dev/null c 1 3; fi
+   if [ ! -e sbin/fsck.aufs ]; then ln -s /bin/true sbin/fsck.aufs; fi
+
+   # find chroot and init
+   if [ -x bin/chroot ]; then  CHROOT=bin/chroot; fi
+   if [ -x sbin/chroot ]; then  CHROOT=sbin/chroot; fi
+   if [ -x usr/bin/chroot ]; then  CHROOT=usr/bin/chroot; fi
+   if [ -x usr/sbin/chroot ]; then CHROOT=usr/sbin/chroot; fi
+   if [ "$CHROOT" = "" ]; then fatal "Can't find executable chroot command"; fi
+
+   if [ -x bin/init ]; then INIT=bin/init; fi
+   if [ -x sbin/init ]; then INIT=sbin/init; fi
+   if [ "$INIT" = "" ]; then fatal "Can't find executable init command"; fi
+
+   mkdir -p mnt/live
+   mount -n -o remount,ro aufs .
+   pivot_root . mnt/live
+   exec $CHROOT . $INIT < dev/console > dev/console 2>&1
+}
+
+init_network()
+{
+	#if is_this_qemu; then
+	#	ifconfig eth0 10.0.2.15 up
+	#else
+		ifconfig $NETWORK_IF $NETWORK_IPV4 up
+	#fi
+}
+
+# mount virtual filesystems like proc etc
+#
+init_proc_sysfs()
+{
+   #debug_log "init_proc_sysfs" "$*"
+   mount -n -t proc proc /proc
+   #echo "0" >/proc/sys/kernel/printk
+   mount -n -t sysfs sysfs /sys
+   mount -n -o remount,rw rootfs /
+   ln -sf /proc/mounts /etc/mtab
+}
+
+# make sure some devices are there
+init_devs()
+{
+   #debug_log "init_devs" "$*"
+   echo /sbin/mdev > /proc/sys/kernel/hotplug
+   mdev -s
+   #modprobe zram 2>/dev/null
+   #modprobe loop 2>/dev/null
+   #modprobe squashfs 2>/dev/null
+   #modprobe fuse 2>/dev/null
+}
+
+# Activate zram (auto-compression of RAM)
+# Compressed RAM consumes 1/2 or even 1/4 of original size
+# Setup static size of 500MB
+#
+init_zram()
+{
+   #debug_log "init_zram" "$*"
+   echo_green_star
+   echo "Setting dynamic RAM compression using ZRAM"
+   echo 536870912 > /sys/block/zram0/disksize # 512MB
+   mkswap /dev/zram0 >/dev/null
+   swapon /dev/zram0 -p 32767
+   echo 100 > /proc/sys/vm/swappiness
+}
+
+# load the AUFS kernel module if needed
+#
+init_aufs()
+{
+   #debug_log "init_aufs" "$*"
+   # TODO maybe check here if aufs support is working at all
+   # and procude useful error message if user has no aufs
+   modprobe aufs 2>/dev/null
+}
+
+# header
+# $1 = text to show
+#
+header()
+{
+   echo "[0;1m""$@""[0;0m"
+}
+
+# echo green star
+#
+echo_green_star()
+{
+   echo -ne "[0;32m""* ""[0;39m"
+}
+
+to_lower()
+{
+	echo $@ | tr '[:upper:]' '[:lower:]'
+}
+
+to_upper()
+{
+	echo $@ | tr '[:lower:]' '[:upper:]'
+}
+
+is_this_qemu()
+{
+	HW=$(cat /proc/cpuinfo | grep Hardware)
+	HW=$(echo ${HW##*:})
+	echo "[$HW]"
+	if [ "$HW" == "ARM-Versatile PB" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+init_qemu()
+{
+	#modprobe sym53c8xx
+	#modprobe smc91x
+	#modprobe sd_mod
+	#mdev -s
+	return
+}
+
+init_fs()
+{
+	#modprobe ext4
+	#modprobe btrfs
+	#modprobe f2fs
+	#modprobe minix
+	return
+}
+
+# @param $1 device
+# @param $2 size
+# @param $3 filesystem type
+resize_partition()
+{
+	DEV=$1
+	SIZE=$2
+	FSTYPE=$(to_lower $3)
+	case $FSTYPE in
+		fat|vfat|fat32)
+			fatresize -p -s "${SIZE}Mi" $DEV
+			;;
+		*)
+			echo "resize_partition(): Unsupported filesystem type \"$FSTYPE\""
+			return 1
+			;;
+	esac
+}
+
+# @param $1 device
+# @param $2 label
+# @param $3 filesystem type
+format_parition()
+{
+	DEV=$1
+	LABEL=$2
+	FSTYPE=$(to_lower $3)
+	case $FSTYPE in
+		fat|vfat|fat32)
+			mkfs.vfat -n $LABEL $DEV
+			return $?
+			;;
+		ext2|ext3|ext4)
+			mkfs.$FSTYPE -L $LABEL $DEV
+			return $?
+			;;
+		f2fs)
+			mkfs.f2fs -l $LABEL $DEV
+			return $?
+			;;
+		btrfs)
+			mkfs.btrfs -f -L $LABEL $DEV
+			return $?
+			;;
+		xfs)
+			mkfs.xfs -f -L $LABEL $DEV
+			return $?
+			;;
+		jfs)
+			mkfs.jfs -L $LABEL $DEV
+			return $?
+			;;
+		swap)
+			# no need to format
+			return 0
+			;;
+		*)
+			echo "format_partition(): Unsupported filesystem type \"$FSTYPE\""
+			return 1
+			;;
+	esac
+}
+
+fstype_to_partition_type()
+{
+	FSTYPE=$(to_lower $1)
+	case $FSTYPE in
+		fat16)
+			echo "06"
+			return 0
+			;;
+		fat|vfat|fat32)
+			echo "0b"
+			return 0
+			;;
+		minix)
+			echo "81"
+			return 0
+			;;
+		ext2|ext3|ext4|f2fs|btrfs|xfs|jfs)
+			echo "83"
+			return 0
+			;;
+		swap)
+			echo "c1"
+			return 0
+			;;
+		*)
+			echo "fstype_to_partition_type(): Unsupported filesystem type \"$FSTYPE\""
+			return 1
+			;;
+	esac
+}
+
+# @param $1 device name
+# @param $2 partitioni number
+devname_to_partition()
+{	
+	if [ $(echo "$1" | grep -E "^/dev/sd[a-z]$") ]; then
+		echo "${1}${2}"
+		return 0
+	elif [ $(echo "$1" | grep -E "^/dev/mmcblk[0-9]$") ]; then
+		echo "${1}p${2}"
+		return 0
+	else
+		echo "disk type not supported"
+		exit 1
+	fi
+}
+
+prepare_partitions()
+{
+	DISK=$1
+	# Disk repartitioning (fdisk)
+	FDISK_CMD=""
+
+	for P in $PARTITIONS; do
+		PR=$(echo $P | awk 'BEGIN{FS=":"};{print $5}')
+		FS=$(echo $P | awk 'BEGIN{FS=":"};{print $3}')
+		
+		T=$(echo $PR | awk 'BEGIN{FS=","};{print $2}')
+		DO_RESIZE="no"
+		if [ "x$T" == "xresize" ]; then
+			DO_RESIZE="yes"
+		fi
+		
+		T=$(echo $FS | awk 'BEGIN{FS=","};{print $2}')
+		DONOT_FORMAT="no"
+		if [ "x$T" == "xnoformat" ]; then
+			DONOT_FORMAT="yes"
+		fi
+		
+		PART_SIZE=$(echo $PR | awk 'BEGIN{FS=","};{print $1}')
+		PART_FS=$(echo $FS | awk 'BEGIN{FS=","};{print $1}')
+		PART_LABEL=$(echo $P | awk 'BEGIN{FS=":"};{print $4}')
+		PART_NUM=$(echo $P | awk 'BEGIN{FS=":"};{print $1}')
+		PART_TYPE=$(echo $P | awk 'BEGIN{FS=":"};{print $2}')
+		PART_DEV=$(devname_to_partition $DISK $PART_NUM)
+		
+		#echo "DEBUG [$P]"
+		#echo "DEBUG sz: $PART_SIZE, fs: $PART_FS, lbl: $PART_LABEL, nm: $PART_NUM, tp: $PART_TYPE"
+		#echo "DEBUG dev: $PART_DEV"
+		
+		if [ "$DO_RESIZE" == "yes" ]; then
+			msg_id=$(webui_print_working "-" "Resizing \"$PART_LABEL\" partition...")
+			resize_partition $PART_DEV $PART_SIZE $PART_FS
+			webui_print_success $msg_id "Resize \"$PART_LABEL\" partition."
+		else
+			# New partition
+			FDISK_CMD="${FDISK_CMD}n:"
+			# Partition type primary/extended
+			if [ "$PART_NUM" -le 4 ]; then
+				FDISK_CMD="${FDISK_CMD}${PART_TYPE}:"
+			fi
+			# Partition number
+			if [ "$PART_NUM" -lt 4 ]; then
+				FDISK_CMD="${FDISK_CMD}$PART_NUM:"
+			fi
+			# Partition start [ENTER]
+			FDISK_CMD="${FDISK_CMD}:"
+			# Partition end/size
+			if [ "$PART_SIZE" != "-" ]; then
+				FDISK_CMD="$FDISK_CMD+${PART_SIZE}M"	
+			fi
+			FDISK_CMD="${FDISK_CMD}:"
+			# Partition type
+			if [ "$PART_FS" != "-" ]; then
+				FDISK_CMD="${FDISK_CMD}t:"
+				FDISK_CMD="${FDISK_CMD}${PART_NUM}:"
+				FDISK_CMD="${FDISK_CMD}$(fstype_to_partition_type $PART_FS):"
+			fi
+		fi
+		
+		
+	done
+	FDISK_CMD="${FDISK_CMD}w:"
+
+	
+	msg_id=$(webui_print_working "-" "Creating system partitions...")
+	echo -n $FDISK_CMD | sed 's/:/\n/g' > /tmp/cmds 
+	fdisk -u $DISK < /tmp/cmds &> /dev/null
+	rm /tmp/cmds
+	webui_print_success $msg_id "Create system partitions."
+	
+	#msg_id=$(webui_print_working "-" "Updating block devices...")
+	#sync
+	#sleep 2
+	#mdev -s
+	#sleep 2
+	#webui_print_success $msg_id "Update block devices."
+	
+	for P in $PARTITIONS; do
+		PR=$(echo $P | awk 'BEGIN{FS=":"};{print $5}')
+		FS=$(echo $P | awk 'BEGIN{FS=":"};{print $3}')
+		
+		T=$(echo $FS | awk 'BEGIN{FS=","};{print $2}')
+		DONOT_FORMAT="no"
+		if [ "x$T" == "xnoformat" ]; then
+			DONOT_FORMAT="yes"
+		fi
+		
+		PART_SIZE=$(echo $PR | awk 'BEGIN{FS=","};{print $1}')
+		PART_FS=$(echo $FS | awk 'BEGIN{FS=","};{print $1}')
+		PART_LABEL=$(echo $P | awk 'BEGIN{FS=":"};{print $4}')
+		PART_NUM=$(echo $P | awk 'BEGIN{FS=":"};{print $1}')
+		
+		if [ "$DONOT_FORMAT" != "yes" ]; then
+			if [ "$PART_FS" != "-" ]; then
+				msg_id=$(webui_print_working "-" "Formating $PART_LABEL partition...")
+				format_parition $(devname_to_partition $DISK $PART_NUM) $PART_LABEL $PART_FS
+				webui_print_success $msg_id "Format \"$PART_LABEL\" partition."
+			fi
+		fi
+		
+	done
+
+}
+
+mount_partitions()
+{
+	DISK=$1
+
+	for P in $PARTITIONS; do
+		PR=$(echo $P | awk 'BEGIN{FS=":"};{print $5}')
+		FS=$(echo $P | awk 'BEGIN{FS=":"};{print $3}')
+		
+		T=$(echo $FS | awk 'BEGIN{FS=","};{print $2}')
+		DONOT_MOUNT="no"
+		if [ "x$T" == "xfstab" ]; then
+			DONOT_MOUNT="yes"
+		fi
+		
+		#PART_SIZE=$(echo $PR | awk 'BEGIN{FS=","};{print $1}')
+		PART_FS=$(echo $FS | awk 'BEGIN{FS=","};{print $1}')
+		PART_LABEL=$(echo $P | awk 'BEGIN{FS=":"};{print $4}')
+		PART_NUM=$(echo $P | awk 'BEGIN{FS=":"};{print $1}')
+		#PART_TYPE=$(echo $P | awk 'BEGIN{FS=":"};{print $2}')
+		
+		#~ if [ "$DO_RESIZE" == "yes" ]; then
+			#~ msg_id=$(webui_print_working "-" "Resizing \"$PART_LABEL\" partition...")
+			#~ resize_partition $(devname_to_partition $DISK $PART_NUM) $PART_SIZE $PART_FS
+			#~ webui_print_success $msg_id "Resize \"$PART_LABEL\" partition."
+		#~ else
+#~ 
+		#~ fi
+		
+		if [ "$PART_FS" != "-" ]; then
+		
+			if [ "$DONOT_MOUNT" == "no" ]; then		
+				MNT="$MOUNTBASE/$PART_LABEL"
+				
+				mkdir $MNT
+				mount $(devname_to_partition $DISK $PART_NUM) $MNT
+			fi
+		
+		fi
+	done
+
+}

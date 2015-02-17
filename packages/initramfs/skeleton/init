@@ -1,0 +1,97 @@
+#!/bin/bash
+
+export PATH=.:/:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /lib/.config
+. /lib/colibrikitlib
+
+transfer_initramfs
+
+init_proc_sysfs
+init_devs
+
+# Delay the boot process until slow devices are loaded
+sleep $BOOT_DELAY
+
+#init_aufs
+#init_zram
+#init_fs
+
+######################################################
+
+IS_FIRSBOOT=$(cmdline_value colibri.firstboot)
+DEBUG_CONSOLE=$(cmdline_value colibri.debug_console)
+
+DISK=/dev/mmcblk0
+
+if is_this_qemu; then
+	init_qemu
+	DISK=/dev/sda
+else
+	# Workaround for fatresize wrong disk devname deduction from 
+	# partdevname. TODO: write a patch for fatresize
+	ln -s /dev/mmcblk0 /dev/mmcblk0p
+fi
+
+init_network
+init_webui
+
+webui_print_success "-" "Colibri Kit init <www.colibri-embedded.org>"
+webui_print_success "-" "Early-boot system copied to RAM."
+webui_print_success "-" "Early-boot WebUI up and running."
+webui_print_simple "-"  "========= First Time Boot ========="
+
+
+echo "IS_FIRSBOOT = $IS_FIRSBOOT"
+
+if [ "$DEBUG_CONSOLE" == "1" ]; then
+	/bin/bash
+fi
+
+#if [ "$IS_FIRSBOOT" == "1" ]; then
+#	prepare_partitions $DISK
+#fi
+#webui_print_question "-"  "Choose further action:"
+#FIRST_FORMAT=$(webui_waitfor_response "Format partitions:1|Poweroff:0")
+
+if [ "$IS_FIRSBOOT" == "1" ]; then
+	webui_print_question "-"  "Choose further action:"
+	FIRST_FORMAT=$(webui_waitfor_response "Format partitions:1|Poweroff:0")
+
+	webui_print_simple "-"  "========= System Preparations Started ========="
+	prepare_partitions $DISK
+	
+	mount_partitions $DISK
+	
+	msg_id=$(webui_print_working "-" "Copying bundles from recovery partition...")
+	cp $MOUNTBASE/boot/bundles/* $BUNDLES/
+	webui_print_success $msg_id "Copy bundles from recovery partition."	
+	
+	# turn off FIRSTBOOT
+	sed -i /mnt/boot/cmdline.txt -e 's/colibri.firstboot=1/colibri.firstboot=0/'
+	# Boot partition is not used anymore
+	umount /mnt/boot
+	# Set firstboot indication for application's system firstboot handling
+	echo "This file indicates that we are booting for the first time" > /lib/firstboot
+else
+	mount_partitions $DISK
+	# Boot partition is not used anymore
+	umount /mnt/boot
+fi
+
+mkdir "$UNION"
+mkdir "$BDATA"
+
+# init aufs union
+init_union "$CHANGES" "$UNION"
+
+# add data to union
+union_append_bundles "$BUNDLES" "$BDATA" "$UNION"
+
+cleanup_webui
+
+fstab_create "$UNION"
+
+change_root "$UNION"
+
+/bin/bash

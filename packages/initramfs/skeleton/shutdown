@@ -1,0 +1,11 @@
+#!/bin/bash
+
+export PATH=.:/:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /lib/.config
+. /lib/colibrikitlib
+
+init_proc_sysfs
+init_devs
+
+exec /bin/bash < dev/console > dev/console 2>&1
