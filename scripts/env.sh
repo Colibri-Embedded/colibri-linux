@@ -15,6 +15,7 @@ X_BUNDLES=${X_SDCARD}/bundles
 X_MAKE_ARGS="-j4"
 
 X_BUNDLE="bundle"
+X_COMPRESSION="gzip"
 X_SKELETON="skeleton"
 X_PERMISSIONS="permissions.sh"
 X_BIN_DIR="/bin"

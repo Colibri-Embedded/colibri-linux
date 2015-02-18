@@ -15,3 +15,8 @@ if [ ! -d tools-master ]; then
 tar xf ../downloads/tools-master.tar.gz
 fi
 ln -fs tools-master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64 work
+
+rm ./work/arm-linux-gnueabihf/libc/usr/lib/arm-linux-gnueabihf/libcrypt.so
+
+cd ./work/arm-linux-gnueabihf/libc/lib/arm-linux-gnueabihf
+ln -s libcrypt.so.1 libcrypt.so

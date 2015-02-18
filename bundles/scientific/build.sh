@@ -2,7 +2,6 @@ P_VERSION=v$(date +%Y%m%d)
 P_ORDER="040"
 P_SRC="scientific"
 P_OUTPUT="${P_ORDER}-${P_SRC}-${P_VERSION}.cb"
-P_COMPRESSION="xz"
 P_DEPENDENCIES="\
 clapack \
 opencv \
@@ -20,7 +19,7 @@ do_build()
 do_post_install()
 {
 	rm -f ${X_BUNDLES}/${P_OUTPUT}
-	mksquashfs ${TARGET_DIR} ${X_BUNDLES}/${P_OUTPUT} -comp ${P_COMPRESSION} -b 512K -no-xattrs -noappend
+	mksquashfs ${TARGET_DIR} ${X_BUNDLES}/${P_OUTPUT} -comp ${X_COMPRESSION} -b 512K -no-xattrs -noappend
 	rm -rf ${TARGET_DIR}
 }
 
