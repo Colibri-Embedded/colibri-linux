@@ -7,7 +7,7 @@ P_URL="http://www.cpan.org/src/5.0"
 #PERL_INSTALL_STAGING = YES
 
 PERL_CROSS_VERSION=0.8.5
-PERL_CROSS_SITE="https://github.com/arsv/perl-cross/archive/"
+PERL_CROSS_SITE="https://github.com/arsv/perl-cross/archive"
 # DO NOT refactor with the github helper (the result is not the same)
 #0.8.5.tar.gz
 PERL_CROSS_SOURCE="perl-cross-${PERL_CROSS_VERSION}"
@@ -20,7 +20,7 @@ source ../../scripts/env.sh ../../scripts
 do_download()
 {
 	msg_info "Downloading ${PERL_CROSS_URL_OUTPUT}"
-	download_source $PERL_CROSS_SITE/$PERL_CROSS_SOURCE $PERL_CROSS_URL_OUTPUT 
+	download_source $PERL_CROSS_SITE/$PERL_CROSS_VERSION.tar.gz $PERL_CROSS_URL_OUTPUT
 }
 
 do_unpack()
