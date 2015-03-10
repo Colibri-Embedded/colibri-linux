@@ -68,7 +68,12 @@ if [ "$IS_FIRSBOOT" == "1" ]; then
 	webui_print_success $msg_id "Copy bundles from recovery partition."	
 	
 	# turn off FIRSTBOOT
-	sed -i /mnt/boot/cmdline.txt -e 's/colibri.firstboot=1/colibri.firstboot=0/'
+	if is_this_qemu; then
+		sed -i /mnt/boot/cmdline.txt.qemu -e 's/colibri.firstboot=1/colibri.firstboot=0/'
+	else
+		sed -i /mnt/boot/cmdline.txt -e 's/colibri.firstboot=1/colibri.firstboot=0/'
+	fi
+	
 	# Boot partition is not used anymore
 	umount /mnt/boot
 	# Set firstboot indication for application's system firstboot handling

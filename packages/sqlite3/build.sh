@@ -17,6 +17,7 @@ do_build()
 		--enable-static=no \
 		--enable-threadsafe
 
+	CFLAGS="-lpthread" \
 	make ${X_MAKE_ARGS}
 	make DESTDIR=${TARGET_DIR} install
 }

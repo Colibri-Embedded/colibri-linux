@@ -1,3 +1,4 @@
+#P_MAJOR_VERSION=20
 P_MAJOR_VERSION=18
 P_VERSION=5.${P_MAJOR_VERSION}.2
 P_SRC="perl-$P_VERSION"
@@ -6,6 +7,7 @@ P_URL="http://www.cpan.org/src/5.0"
 
 #PERL_INSTALL_STAGING = YES
 
+#PERL_CROSS_VERSION=0.9.4
 PERL_CROSS_VERSION=0.8.5
 PERL_CROSS_SITE="https://github.com/arsv/perl-cross/archive"
 # DO NOT refactor with the github helper (the result is not the same)

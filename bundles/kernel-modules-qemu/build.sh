@@ -3,6 +3,7 @@ P_ORDER="002"
 P_SRC="kernel-modules-qemu"
 P_OUTPUT="${P_ORDER}-${P_SRC}-${P_VERSION}.cb"
 P_DEPENDENCIES="\
+linux-kernel-rpi \
 linux-kernel-qemu \
 "
 

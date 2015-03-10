@@ -10,8 +10,8 @@ do_build()
 {
 	X_PYTHON27_PATH="${DDIR}/../python27/_install"
 	X_PYSETUPTOOLS_PATH="${DDIR}/../python-setuptools/_install"
-	X_HOST_CLAPACK_PATH="${DDIR}/../clpack/_host"
-	X_CLAPACK_PATH="${DDIR}/../clpack/_install"
+	X_HOST_CLAPACK_PATH="${DDIR}/../clapack/_host"
+	X_CLAPACK_PATH="${DDIR}/../clapack/_install"
 	X_NUMPY_PATH="${DDIR}/../python-numpy/_install"
 	
 	X_HOST_PYTHON27_PATH="${DDIR}/../python27/_host"
@@ -42,7 +42,7 @@ do_build()
 	#				  :\
 	#				  "
 	
-	#export LD_LIBRARY_PATH=${X_HOST_CLAPACK_PATH}/usr/lib
+	export LD_LIBRARY_PATH=${X_HOST_CLAPACK_PATH}/usr/lib
 	
 	${X_HOST_PYTHON27} setup.py config 
 	

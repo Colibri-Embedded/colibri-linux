@@ -102,15 +102,15 @@ do_post_install()
 	#~ cp -R --parents $M/kernel/drivers/net			${TARGET_DIR}
 	#~ cp -R --parents $M/kernel/lib/raid6				${TARGET_DIR}
 	#~ cp -R --parents $M/kernel/crypto/xor.ko			${TARGET_DIR}
-	#~ cp -R --parents $M/modules.*					${TARGET_DIR}
+	#~ cp -R --parents $M/modules.*						${TARGET_DIR}
 	#~ popd &> /dev/null
 	
 	chown -R root.root ${TARGET_DIR}
 	
-	#INITRAMFS="${DDIR}/initramfs.img"
-	#cd ${TARGET_DIR}
-	#rm -f ${INITRAMFS}
-	#find . -print | cpio -o -H newc 2>/dev/null | xz -f --extreme --check=crc32  > ${INITRAMFS}
+	INITRAMFS="${X_SDCARD}/initramfs.img"
+	cd ${TARGET_DIR}
+	rm -f ${INITRAMFS}
+	find . -print | cpio -o -H newc 2>/dev/null | xz -f --extreme --check=crc32  > ${INITRAMFS}
 }
 
 do_commands $@
