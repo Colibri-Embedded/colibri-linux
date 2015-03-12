@@ -2,16 +2,12 @@
 
 export PATH=.:/:/usr/sbin:/usr/bin:/sbin:/bin
 
-. /lib/.config
 . /lib/colibrikitlib
 
 transfer_initramfs
 
 init_proc_sysfs
 init_devs
-
-# Delay the boot process until slow devices are loaded
-sleep $BOOT_DELAY
 
 #init_aufs
 #init_zram
@@ -32,6 +28,24 @@ else
 	# partdevname. TODO: write a patch for fatresize
 	ln -s /dev/mmcblk0 /dev/mmcblk0p
 fi
+
+BOOTPART=$(devname_to_partition $DISK 1)
+
+sleep 1
+
+# Mount boot partition as read-only
+mkdir -p /mnt/boot
+mount $BOOTPART -o ro /mnt/boot
+# Copy configuration
+cp /mnt/boot/earlyboot/earlyboot.conf /lib/.config 
+# Unmount boot partition
+umount $BOOTPART
+rm -rf /mnt/boot
+
+. /lib/.config
+
+# Delay the boot process until slow devices are loaded
+sleep $BOOT_DELAY
 
 init_network
 init_webui
@@ -61,11 +75,16 @@ if [ "$IS_FIRSBOOT" == "1" ]; then
 	webui_print_simple "-"  "========= System Preparations Started ========="
 	prepare_partitions $DISK
 	
+	msg_id=$(webui_print_working "-" "Mounting partitions...")
 	mount_partitions $DISK
+	webui_print_success $msg_id "Partitions mounted."	
 	
 	msg_id=$(webui_print_working "-" "Copying bundles from recovery partition...")
 	cp $MOUNTBASE/boot/bundles/* $BUNDLES/
+	sync
+	sleep 1
 	webui_print_success $msg_id "Copy bundles from recovery partition."	
+	
 	
 	# turn off FIRSTBOOT
 	if is_this_qemu; then

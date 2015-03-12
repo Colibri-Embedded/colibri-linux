@@ -1,7 +1,7 @@
-P_VERSION=3.16
+P_VERSION=3.18.2
 P_SRC="btrfs-progs-v${P_VERSION}"
 P_TAR="btrfs-progs-v${P_VERSION}.tar.xz"
-P_URL="https://www.kernel.org/pub/linux/kernel/people/mason/btrfs-progs"
+P_URL="https://www.kernel.org/pub/linux/kernel/people/kdave/btrfs-progs"
 P_DEPENDENCIES="libuuid libblkid libacl libattr zlib liblzo e2fsprogs"
 
 source ../../scripts/env.sh ../../scripts
@@ -15,6 +15,7 @@ do_build()
 		LD="$X_LD" \
 		RANLIB="$X_RANLIB" \
 		DISABLE_DOCUMENTATION=1 \
+		DISABLE_BACKTRACE=1 \
 		CFLAGS="$(build_cflags $DDIR $P_DEPENDENCIES)" \
 		LDFLAGS="$(build_ldflags $DDIR $P_DEPENDENCIES)" \
 		CPPFLAGS="$(build_cppflags $DDIR $P_DEPENDENCIES)" \
@@ -27,6 +28,7 @@ do_build()
 		LD="$X_LD" \
 		RANLIB="$X_RANLIB" \
 		DISABLE_DOCUMENTATION=1 \
+		DISABLE_BACKTRACE=1 \
 		CFLAGS="$(build_cflags $DDIR $P_DEPENDENCIES)" \
 		LDFLAGS="$(build_ldflags $DDIR $P_DEPENDENCIES)" \
 		CPPFLAGS="$(build_cppflags $DDIR $P_DEPENDENCIES)" \

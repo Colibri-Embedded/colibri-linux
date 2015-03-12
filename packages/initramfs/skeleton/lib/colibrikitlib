@@ -78,8 +78,8 @@ fstab_create()
 	echo sysfs /sys sysfs defaults 0 0 >> $FSTAB
 	echo tmpfs /run	tmpfs defaults 0 0  >> $FSTAB
 	echo tmpfs /tmp	tmpfs defaults 0 0  >> $FSTAB
-   #echo devpts /dev/pts devpts gid=5,mode=620 0 0 >> $FSTAB
-   #echo tmpfs /dev/shm tmpfs defaults 0 0 >> $FSTAB
+    echo devpts /dev/pts devpts gid=5,mode=620 0 0 >> $FSTAB
+    echo tmpfs /dev/shm tmpfs defaults 0 0 >> $FSTAB
 }
 
 # Change root and execute init
@@ -145,6 +145,9 @@ init_devs()
    #debug_log "init_devs" "$*"
    echo /sbin/mdev > /proc/sys/kernel/hotplug
    mdev -s
+   
+   #mkdir /dev/pts
+   #mount -t devpts devpts /dev/pts
    #modprobe zram 2>/dev/null
    #modprobe loop 2>/dev/null
    #modprobe squashfs 2>/dev/null
@@ -289,6 +292,90 @@ format_parition()
 			;;
 		*)
 			echo "format_partition(): Unsupported filesystem type \"$FSTYPE\""
+			return 1
+			;;
+	esac
+}
+
+# @param $1 device
+# @param $2 filesystem type
+check_partition()
+{
+	DEV=$1
+	FSTYPE=$(to_lower $2)
+	case $FSTYPE in
+		fat|vfat|fat32)
+			fsck.vfat $DEV
+			return $?
+			;;
+		ext2|ext3|ext4)
+			fsck.$FSTYPE $DEV
+			return $?
+			;;
+		f2fs)
+			fsck.f2fs $DEV
+			return $?
+			;;
+		btrfs)
+			btrfsck $DEV
+			return $?
+			;;
+		xfs)
+			fsck.xfs $DEV
+			return $?
+			;;
+		jfs)
+			fsck.jfs $DEV
+			return $?
+			;;
+		swap)
+			# no need to format
+			return 0
+			;;
+		*)
+			echo "check_partition(): Unsupported filesystem type \"$FSTYPE\""
+			return 1
+			;;
+	esac
+}
+
+# @param $1 device
+# @param $2 filesystem type
+repair_paritition()
+{
+	DEV=$1
+	FSTYPE=$(to_lower $2)
+	case $FSTYPE in
+		fat|vfat|fat32)
+			fsck.vfat -a -w $DEV
+			return $?
+			;;
+		ext2|ext3|ext4)
+			fsck.$FSTYPE -p $DEV
+			return $?
+			;;
+		f2fs)
+			fsck.f2fs $DEV
+			return $?
+			;;
+		btrfs)
+			btrfsck $DEV
+			return $?
+			;;
+		xfs)
+			fsck.xfs $DEV
+			return $?
+			;;
+		jfs)
+			fsck.jfs $DEV
+			return $?
+			;;
+		swap)
+			# no need to format
+			return 0
+			;;
+		*)
+			echo "check_partition(): Unsupported filesystem type \"$FSTYPE\""
 			return 1
 			;;
 	esac
@@ -440,8 +527,13 @@ prepare_partitions()
 		if [ "$DONOT_FORMAT" != "yes" ]; then
 			if [ "$PART_FS" != "-" ]; then
 				msg_id=$(webui_print_working "-" "Formating $PART_LABEL partition...")
+
 				format_parition $(devname_to_partition $DISK $PART_NUM) $PART_LABEL $PART_FS
-				webui_print_success $msg_id "Format \"$PART_LABEL\" partition."
+				retr=$?
+				# TODO: error handling
+				sync
+				webui_print_success $msg_id "Format \"$PART_LABEL\" partition."				
+				
 			fi
 		fi
 		
@@ -482,8 +574,25 @@ mount_partitions()
 			if [ "$DONOT_MOUNT" == "no" ]; then		
 				MNT="$MOUNTBASE/$PART_LABEL"
 				
-				mkdir $MNT
+				mkdir -p $MNT
 				mount $(devname_to_partition $DISK $PART_NUM) $MNT
+				retr=$?
+				if [ "x$retr" != "x0" ]; then
+					if [ "$PART_FS" == "BTRFS" ]; then
+						echo "Mount failed for" $(devname_to_partition $DISK $PART_NUM)
+						#read l
+						format_parition $(devname_to_partition $DISK $PART_NUM) $PART_LABEL $PART_FS
+						sync
+						sleep 1
+						mount $(devname_to_partition $DISK $PART_NUM) $MNT
+						retr=$?
+						if [ "x$retr" != "x0" ]; then
+							echo "Mount failed again."
+							read l
+						fi
+					fi
+				fi
+				#check_partition $(devname_to_partition $DISK $PART_NUM) $PART_FS;
 			fi
 		
 		fi
